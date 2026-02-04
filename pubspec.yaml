@@ -1,0 +1,41 @@
+name: your_subscriptions
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  supabase_flutter: ^2.12.0
+  google_sign_in: ^7.2.0
+  fl_chart: ^1.1.1
+  image_picker: ^1.2.1
+  intl: ^0.20.2
+  flutter_local_notifications: ^19.5.0
+  timezone: ^0.10.1
+  local_auth: ^3.0.0
+  shared_preferences: ^2.5.4
+  flutter_dotenv: ^6.0.0
+  http: ^1.6.0
+
+  # ❌ REMOVED:
+  # firebase_core
+  # cloud_firestore
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/brands/
+    - .env
