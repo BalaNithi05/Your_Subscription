@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -6,7 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/profile_model.dart';
 import '../repositories/profile_repository.dart';
 import '../services/currency_service.dart';
-import '../main.dart'; // currencyNotifier
+import '../main.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -26,7 +27,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   File? _imageFile;
   String? _existingAvatarUrl;
 
-  // 🔥 STORE CURRENCY CODE
   String _currency = 'INR';
 
   bool _saving = false;
@@ -40,7 +40,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _loadProfile();
   }
 
-  // ================= LOAD PROFILE =================
   Future<void> _loadProfile() async {
     final user = _client.auth.currentUser;
     if (user == null) return;
@@ -60,7 +59,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     setState(() => _loading = false);
   }
 
-  // ================= PICK IMAGE =================
   Future<void> _pickImage() async {
     final picked = await ImagePicker().pickImage(
       source: ImageSource.gallery,
@@ -74,7 +72,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
-  // ================= SAVE PROFILE =================
   Future<void> _saveProfile() async {
     if (_saving) return;
 
@@ -93,7 +90,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     try {
       String? avatarUrl = _existingAvatarUrl;
 
-      // 🔹 Upload avatar if changed
       if (_imageFile != null) {
         final ext = _imageFile!.path.split('.').last;
         final fileName = '${user.id}.$ext';
@@ -120,7 +116,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         bio: _bioController.text.trim().isEmpty
             ? null
             : _bioController.text.trim(),
-        currency: _currency, // ✅ SAVE CODE
+        currency: _currency,
         avatarUrl: avatarUrl,
         themeMode: 'system',
         fcmToken: null,
@@ -128,11 +124,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
       await _repository.updateProfile(updatedProfile);
 
-      // 🔥 VERY IMPORTANT
-      // Reload CurrencyService
       await CurrencyService.loadUserCurrency();
-
-      // Update global notifier (symbol)
       currencyNotifier.value = CurrencyService.symbol;
 
       if (!mounted) return;
@@ -151,21 +143,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
-  // ================= CURRENCY LABEL =================
   String _currencyLabel(String code) {
     switch (code) {
       case 'USD':
-        return '\$';
+        return 'USD (\$)';
       case 'EUR':
-        return '€';
+        return 'EUR (€)';
       case 'GBP':
-        return '£';
+        return 'GBP (£)';
       default:
-        return '₹';
+        return 'INR (₹)';
     }
   }
 
-  // ================= UI =================
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -175,102 +165,223 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final user = _client.auth.currentUser;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Edit Profile'),
-        actions: [
-          TextButton(
-            onPressed: _saving ? null : _saveProfile,
-            child: _saving
-                ? const SizedBox(
-                    height: 16,
-                    width: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('Save'),
+      backgroundColor: const Color(0xFFF1F5F9),
+      body: Stack(
+        children: [
+          Container(
+            height: 240,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+          ),
+          CustomScrollView(
+            slivers: [
+              SliverAppBar(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                pinned: true,
+                title: const Text('Edit Profile'),
+                actions: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: TextButton(
+                      onPressed: _saving ? null : _saveProfile,
+                      child: _saving
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text(
+                              'Save',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 40),
+                      _glassAvatarCard(),
+                      const SizedBox(height: 30),
+                      _inputCard(
+                        child: Column(
+                          children: [
+                            _inputField(
+                              controller: _nameController,
+                              label: 'Name',
+                            ),
+                            const SizedBox(height: 16),
+                            _inputField(
+                              readOnly: true,
+                              label: 'Email',
+                              hint: user?.email ?? '',
+                            ),
+                            const SizedBox(height: 16),
+                            _inputField(
+                              controller: _phoneController,
+                              label: 'Phone',
+                              keyboard: TextInputType.phone,
+                            ),
+                            const SizedBox(height: 16),
+                            _inputField(
+                              controller: _bioController,
+                              label: 'Bio',
+                              maxLines: 3,
+                            ),
+                            const SizedBox(height: 16),
+                            DropdownButtonFormField<String>(
+                              value: _currency,
+                              items: _currencies
+                                  .map(
+                                    (code) => DropdownMenuItem(
+                                      value: code,
+                                      child: Text(_currencyLabel(code)),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (v) => setState(() => _currency = v!),
+                              decoration: InputDecoration(
+                                labelText: 'Default Currency',
+                                filled: true,
+                                fillColor: Colors.white,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFFE2E8F0),
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFFE2E8F0),
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFF2563EB),
+                                    width: 1.5,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 40),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // AVATAR
-            GestureDetector(
-              onTap: _pickImage,
-              child: CircleAvatar(
-                radius: 50,
-                backgroundColor: Colors.grey.shade300,
-                backgroundImage: _imageFile != null
-                    ? FileImage(_imageFile!)
-                    : _existingAvatarUrl != null
-                    ? NetworkImage(_existingAvatarUrl!)
-                    : null,
-                child: _imageFile == null && _existingAvatarUrl == null
-                    ? const Icon(Icons.camera_alt, size: 30)
-                    : null,
-              ),
-            ),
-            const SizedBox(height: 24),
+    );
+  }
 
-            // NAME
-            TextField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Name',
-                border: OutlineInputBorder(),
+  Widget _glassAvatarCard() {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(30),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(color: Colors.white.withOpacity(0.2)),
+          ),
+          child: Column(
+            children: [
+              GestureDetector(
+                onTap: _pickImage,
+                child: CircleAvatar(
+                  radius: 55,
+                  backgroundColor: Colors.white,
+                  backgroundImage: _imageFile != null
+                      ? FileImage(_imageFile!)
+                      : _existingAvatarUrl != null
+                      ? NetworkImage(_existingAvatarUrl!)
+                      : null,
+                  child: _imageFile == null && _existingAvatarUrl == null
+                      ? const Icon(
+                          Icons.camera_alt,
+                          size: 30,
+                          color: Colors.black,
+                        )
+                      : null,
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 10),
+              const Text(
+                "Tap to change photo",
+                style: TextStyle(color: Colors.white70),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-            // EMAIL
-            TextField(
-              readOnly: true,
-              decoration: InputDecoration(
-                labelText: 'Email',
-                border: const OutlineInputBorder(),
-                hintText: user?.email ?? '',
-              ),
-            ),
-            const SizedBox(height: 16),
+  Widget _inputCard({required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(26),
+        boxShadow: [
+          BoxShadow(blurRadius: 20, color: Colors.black.withOpacity(0.05)),
+        ],
+      ),
+      child: child,
+    );
+  }
 
-            // PHONE
-            TextField(
-              controller: _phoneController,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
-                labelText: 'Phone',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // BIO
-            TextField(
-              controller: _bioController,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Bio',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // CURRENCY
-            DropdownButtonFormField<String>(
-              value: _currency,
-              items: _currencies.map((code) {
-                return DropdownMenuItem<String>(
-                  value: code,
-                  child: Text(_currencyLabel(code)), // symbol only
-                );
-              }).toList(),
-              onChanged: (v) => setState(() => _currency = v!),
-              decoration: const InputDecoration(
-                labelText: 'Default Currency',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
+  Widget _inputField({
+    TextEditingController? controller,
+    required String label,
+    String? hint,
+    bool readOnly = false,
+    int maxLines = 1,
+    TextInputType keyboard = TextInputType.text,
+  }) {
+    return TextField(
+      controller: controller,
+      readOnly: readOnly,
+      maxLines: maxLines,
+      keyboardType: keyboard,
+      style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w500),
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 18,
+          vertical: 18,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5),
         ),
       ),
     );

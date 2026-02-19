@@ -1,11 +1,12 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../login/login_screen.dart';
 import 'home_screen.dart';
 import '../services/theme_service.dart';
-import '../services/currency_service.dart'; // ✅ ADDED
+import '../services/currency_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -15,44 +16,56 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
+    with TickerProviderStateMixin {
+  late AnimationController _mainController;
+  late AnimationController _floatController;
+
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
+  late Animation<double> _floatAnimation;
 
   @override
   void initState() {
     super.initState();
 
-    // 🔥 Animation setup
-    _controller = AnimationController(
+    // ================= MAIN ANIMATION =================
+    _mainController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     );
 
-    _fadeAnimation = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
+    _fadeAnimation = CurvedAnimation(
+      parent: _mainController,
+      curve: Curves.easeIn,
+    );
 
-    _scaleAnimation = Tween<double>(
-      begin: 0.8,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
+    _scaleAnimation = Tween<double>(begin: 0.85, end: 1.0).animate(
+      CurvedAnimation(parent: _mainController, curve: Curves.easeOutBack),
+    );
 
-    _controller.forward();
+    _mainController.forward();
+
+    // ================= FLOATING LOGO =================
+    _floatController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+
+    _floatAnimation = Tween<double>(
+      begin: -12,
+      end: 12,
+    ).animate(_floatController);
 
     _checkSession();
   }
 
-  // =========================
-  // CHECK SESSION + LOAD DATA
-  // =========================
+  // ================= CHECK SESSION =================
   Future<void> _checkSession() async {
-    // ✅ Load theme
     await ThemeService.loadUserTheme();
 
     final session = Supabase.instance.client.auth.currentSession;
 
     if (session != null) {
-      // ✅ VERY IMPORTANT: Load currency before home
       await CurrencyService.loadUserCurrency();
     }
 
@@ -75,7 +88,8 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
-    _controller.dispose();
+    _mainController.dispose();
+    _floatController.dispose();
     super.dispose();
   }
 
@@ -84,18 +98,18 @@ class _SplashScreenState extends State<SplashScreen>
     return Scaffold(
       body: Stack(
         children: [
-          // 🌈 Animated Gradient Background
-          AnimatedContainer(
-            duration: const Duration(seconds: 5),
+          // ================= PREMIUM GRADIENT =================
+          Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0xFF4FACFE), Color(0xFF00F2FE)],
+                colors: [Color(0xFF4C1D95), Color(0xFF1E1B4B)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
             ),
           ),
 
+          // ================= CONTENT =================
           Center(
             child: FadeTransition(
               opacity: _fadeAnimation,
@@ -104,25 +118,42 @@ class _SplashScreenState extends State<SplashScreen>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // 🔥 Floating Logo
-                    TweenAnimationBuilder<double>(
-                      tween: Tween<double>(begin: -15, end: 15),
-                      duration: const Duration(seconds: 2),
-                      curve: Curves.easeInOut,
-                      builder: (context, value, child) {
-                        return Transform.translate(
-                          offset: Offset(0, value),
-                          child: child,
-                        );
-                      },
-                      child: const Icon(
-                        Icons.subscriptions,
-                        size: 80,
-                        color: Colors.white,
-                      ),
+                    // ===== GLOW EFFECT =====
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          width: 140,
+                          height: 140,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: RadialGradient(
+                              colors: [
+                                Colors.cyanAccent.withOpacity(0.4),
+                                Colors.transparent,
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        AnimatedBuilder(
+                          animation: _floatAnimation,
+                          builder: (context, child) {
+                            return Transform.translate(
+                              offset: Offset(0, _floatAnimation.value),
+                              child: child,
+                            );
+                          },
+                          child: const Icon(
+                            Icons.subscriptions_rounded,
+                            size: 90,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
                     ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 30),
 
                     const Text(
                       "Your Subscriptions",
@@ -134,18 +165,28 @@ class _SplashScreenState extends State<SplashScreen>
                       ),
                     ),
 
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
 
                     const Text(
                       "Track • Manage • Stay Ahead",
-                      style: TextStyle(color: Colors.white70, fontSize: 14),
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                        letterSpacing: 0.5,
+                      ),
                     ),
 
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 40),
 
-                    const CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
+                    const SizedBox(
+                      width: 26,
+                      height: 26,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Colors.cyanAccent,
+                        ),
+                      ),
                     ),
                   ],
                 ),

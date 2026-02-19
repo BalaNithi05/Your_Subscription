@@ -41,9 +41,6 @@ class _SubscriptionDetailsScreenState extends State<SubscriptionDetailsScreen> {
     _loadCurrency();
   }
 
-  // =========================
-  // LOAD CURRENCY
-  // =========================
   Future<void> _loadCurrency() async {
     final user = _client.auth.currentUser;
     if (user == null) return;
@@ -61,9 +58,6 @@ class _SubscriptionDetailsScreenState extends State<SubscriptionDetailsScreen> {
     });
   }
 
-  // =========================
-  // NEXT BILLING DATE
-  // =========================
   DateTime get _nextBillingDate {
     final start = widget.subscription.startDate;
     return widget.subscription.billingCycle == 'monthly'
@@ -71,9 +65,6 @@ class _SubscriptionDetailsScreenState extends State<SubscriptionDetailsScreen> {
         : DateTime(start.year + 1, start.month, start.day);
   }
 
-  // =========================
-  // BRAND IMAGE (Fallback)
-  // =========================
   ImageProvider? _getBrandImage(String name) {
     final lower = name.toLowerCase();
     for (final entry in brandLogos.entries) {
@@ -84,9 +75,6 @@ class _SubscriptionDetailsScreenState extends State<SubscriptionDetailsScreen> {
     return null;
   }
 
-  // =========================
-  // PAUSE / RESUME
-  // =========================
   Future<void> _togglePause() async {
     final newState = !_paused;
     final sub = widget.subscription;
@@ -99,7 +87,6 @@ class _SubscriptionDetailsScreenState extends State<SubscriptionDetailsScreen> {
       await NotificationService.cancel(notificationId);
     } else {
       final resumedSub = sub.copyWith(isPaused: false);
-
       final reminderDate = ReminderUsecase.getReminderDate(resumedSub);
 
       if (reminderDate != null) {
@@ -117,13 +104,11 @@ class _SubscriptionDetailsScreenState extends State<SubscriptionDetailsScreen> {
     Navigator.pop(context, true);
   }
 
-  // =========================
-  // DELETE
-  // =========================
   Future<void> _deleteSubscription() async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Delete Subscription'),
         content: Text(
           'Are you sure you want to delete "${widget.subscription.name}"?',
@@ -135,8 +120,7 @@ class _SubscriptionDetailsScreenState extends State<SubscriptionDetailsScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -160,12 +144,22 @@ class _SubscriptionDetailsScreenState extends State<SubscriptionDetailsScreen> {
     final sub = widget.subscription;
     final brandImage = _getBrandImage(sub.name);
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final bgColor = isDark ? const Color(0xFF0F172A) : const Color(0xFFF4F6FA);
+    final cardColor = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subTextColor = isDark ? Colors.white70 : Colors.black54;
+    final accent = Theme.of(context).colorScheme.primary;
+
     return Scaffold(
+      backgroundColor: bgColor,
       appBar: AppBar(
+        elevation: 0,
         title: const Text('Subscription Details'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.edit),
+            icon: Icon(Icons.edit, color: accent),
             onPressed: () async {
               final updated = await Navigator.push(
                 context,
@@ -181,65 +175,66 @@ class _SubscriptionDetailsScreenState extends State<SubscriptionDetailsScreen> {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         children: [
-          // HEADER
+          // ================= HEADER CARD =================
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF4FACFE), Color(0xFF00F2FE)],
-              ),
-              borderRadius: BorderRadius.circular(22),
+              color: cardColor,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(color: accent.withOpacity(0.15), blurRadius: 30),
+              ],
             ),
             child: Row(
               children: [
                 CircleAvatar(
-                  radius: 32,
-                  backgroundColor: Colors.white,
+                  radius: 36,
+                  backgroundColor: isDark
+                      ? Colors.grey.shade800
+                      : Colors.grey.shade200,
                   backgroundImage: sub.imageUrl != null
                       ? NetworkImage(sub.imageUrl!)
                       : brandImage,
                   child: sub.imageUrl == null && brandImage == null
                       ? Text(
                           sub.name[0].toUpperCase(),
-                          style: const TextStyle(
-                            fontSize: 22,
+                          style: TextStyle(
+                            fontSize: 24,
                             fontWeight: FontWeight.bold,
-                            color: Colors.blue,
+                            color: textColor,
                           ),
                         )
                       : null,
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 18),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         sub.name,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: textColor,
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      Text(
-                        sub.category,
-                        style: const TextStyle(color: Colors.white70),
-                      ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 6),
+                      Text(sub.category, style: TextStyle(color: subTextColor)),
+                      const SizedBox(height: 14),
                       Text(
                         '$_currencySymbol${sub.amount.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 26,
+                        style: TextStyle(
+                          color: accent,
+                          fontSize: 28,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       Text(
                         sub.billingCycle.toUpperCase(),
-                        style: const TextStyle(color: Colors.white70),
+                        style: TextStyle(color: subTextColor),
                       ),
                     ],
                   ),
@@ -248,38 +243,78 @@ class _SubscriptionDetailsScreenState extends State<SubscriptionDetailsScreen> {
             ),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 28),
 
-          _section(
-            title: 'Billing',
-            children: [
-              _row('First Bill', sub.startDate.toString().split(' ')[0]),
-              _row(
-                'Next Billing',
-                _paused ? 'Paused' : _nextBillingDate.toString().split(' ')[0],
-                valueColor: _paused ? Colors.orange : Colors.black,
-              ),
-            ],
+          // ================= BILLING CARD =================
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(22),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Billing Information',
+                  style: TextStyle(
+                    color: textColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                _row(
+                  'First Bill',
+                  sub.startDate.toString().split(' ')[0],
+                  subTextColor,
+                  textColor,
+                ),
+                _row(
+                  'Next Billing',
+                  _paused
+                      ? 'Paused'
+                      : _nextBillingDate.toString().split(' ')[0],
+                  _paused ? Colors.orange : accent,
+                  textColor,
+                ),
+              ],
+            ),
           ),
         ],
       ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(16),
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.all(20),
+        color: bgColor,
         child: Row(
           children: [
             Expanded(
               child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: accent),
+                  foregroundColor: accent,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
                 icon: Icon(_paused ? Icons.play_arrow : Icons.pause),
                 label: Text(_paused ? 'Resume' : 'Pause'),
                 onPressed: _togglePause,
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 16),
             Expanded(
               child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
                 icon: const Icon(Icons.delete),
                 label: const Text('Delete'),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
                 onPressed: _deleteSubscription,
               ),
             ),
@@ -289,39 +324,13 @@ class _SubscriptionDetailsScreenState extends State<SubscriptionDetailsScreen> {
     );
   }
 
-  // ================= HELPERS =================
-
-  Widget _section({required String title, required List<Widget> children}) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-          ),
-          const SizedBox(height: 12),
-          ...children,
-        ],
-      ),
-    );
-  }
-
-  Widget _row(String label, String value, {Color valueColor = Colors.black}) {
+  Widget _row(String label, String value, Color valueColor, Color labelColor) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 14),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Colors.grey)),
+          Text(label, style: TextStyle(color: labelColor.withOpacity(0.6))),
           Text(
             value,
             style: TextStyle(fontWeight: FontWeight.w600, color: valueColor),

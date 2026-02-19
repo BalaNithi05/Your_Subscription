@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -34,7 +35,6 @@ class _LoginScreenState extends State<LoginScreen>
   void initState() {
     super.initState();
 
-    // 🔥 Animation setup
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
@@ -49,7 +49,6 @@ class _LoginScreenState extends State<LoginScreen>
 
     _controller.forward();
 
-    // 🔐 AUTH STATE LISTENER
     _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((
       data,
     ) async {
@@ -70,7 +69,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   // =====================================================
-  // 🔥 CREATE PROFILE IF NOT EXISTS
+  // PROFILE CREATION + LOAD SETTINGS
   // =====================================================
   Future<void> _handleUserAfterLogin() async {
     final client = Supabase.instance.client;
@@ -79,14 +78,12 @@ class _LoginScreenState extends State<LoginScreen>
     if (user == null) return;
 
     try {
-      // 🔎 Check if profile exists
       final existingProfile = await client
           .from('profiles')
           .select()
           .eq('id', user.id)
           .maybeSingle();
 
-      // 🆕 Create profile if not exists
       if (existingProfile == null) {
         await client.from('profiles').insert({
           'id': user.id,
@@ -101,7 +98,6 @@ class _LoginScreenState extends State<LoginScreen>
         });
       }
 
-      // 🔄 Load user settings
       await ThemeService.loadUserTheme();
       await CurrencyService.loadUserCurrency();
 
@@ -126,7 +122,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   // =====================================================
-  // 🔵 GOOGLE LOGIN
+  // GOOGLE LOGIN
   // =====================================================
   Future<void> loginWithGoogle() async {
     await Supabase.instance.client.auth.signInWithOAuth(
@@ -136,7 +132,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   // =====================================================
-  // 📧 EMAIL LOGIN
+  // EMAIL LOGIN
   // =====================================================
   Future<void> loginWithEmail() async {
     setState(() => isLoading = true);
@@ -160,7 +156,6 @@ class _LoginScreenState extends State<LoginScreen>
       }
     } catch (e) {
       if (!mounted) return;
-
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(e.toString())));
@@ -174,149 +169,158 @@ class _LoginScreenState extends State<LoginScreen>
   // =====================================================
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final gradient = isDark
+        ? const LinearGradient(
+            colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          )
+        : const LinearGradient(
+            colors: [Color(0xFF4FACFE), Color(0xFF00F2FE)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          );
+
     return Scaffold(
       body: Stack(
         children: [
-          // 🌈 Background
-          AnimatedContainer(
-            duration: const Duration(seconds: 5),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF4FACFE), Color(0xFF00F2FE)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-          ),
+          Container(decoration: BoxDecoration(gradient: gradient)),
 
           Center(
             child: SlideTransition(
               position: _slideAnimation,
               child: FadeTransition(
                 opacity: _fadeAnimation,
-                child: Container(
-                  margin: const EdgeInsets.all(24),
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.95),
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        blurRadius: 30,
-                        color: Colors.black.withOpacity(0.2),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(28),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                    child: Container(
+                      width: 380,
+                      padding: const EdgeInsets.all(28),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white.withOpacity(0.08)
+                            : Colors.white.withOpacity(0.95),
+                        borderRadius: BorderRadius.circular(28),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.2),
+                        ),
                       ),
-                    ],
-                  ),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.subscriptions,
-                          size: 60,
-                          color: Colors.blue,
-                        ),
-                        const SizedBox(height: 20),
-
-                        const Text(
-                          "Welcome Back",
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-
-                        const SizedBox(height: 24),
-
-                        TextField(
-                          controller: emailController,
-                          decoration: const InputDecoration(
-                            labelText: "Email",
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        TextField(
-                          controller: passwordController,
-                          obscureText: obscurePassword,
-                          decoration: InputDecoration(
-                            labelText: "Password",
-                            border: const OutlineInputBorder(),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                obscurePassword
-                                    ? Icons.visibility_off
-                                    : Icons.visibility,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  obscurePassword = !obscurePassword;
-                                });
-                              },
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.subscriptions,
+                              size: 60,
+                              color: isDark ? Colors.white : Colors.blue,
                             ),
-                          ),
-                        ),
-
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const ForgotPasswordScreen(),
-                                ),
-                              );
-                            },
-                            child: const Text("Forgot password?"),
-                          ),
-                        ),
-
-                        const SizedBox(height: 10),
-
-                        SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: ElevatedButton(
-                            onPressed: isLoading ? null : loginWithEmail,
-                            child: isLoading
-                                ? const CircularProgressIndicator(
-                                    color: Colors.white,
-                                  )
-                                : const Text("Login"),
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-                        const Text("OR"),
-                        const SizedBox(height: 16),
-
-                        SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: OutlinedButton.icon(
-                            icon: const Icon(Icons.login),
-                            label: const Text("Continue with Google"),
-                            onPressed: loginWithGoogle,
-                          ),
-                        ),
-
-                        const SizedBox(height: 24),
-
-                        TextButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const SignupScreen(),
+                            const SizedBox(height: 16),
+                            Text(
+                              "Welcome Back",
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? Colors.white : Colors.black,
                               ),
-                            );
-                          },
-                          child: const Text("Create new account"),
+                            ),
+                            const SizedBox(height: 30),
+
+                            // EMAIL
+                            _inputField(
+                              controller: emailController,
+                              label: "Email",
+                              icon: Icons.email_outlined,
+                              isDark: isDark,
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // PASSWORD
+                            _inputField(
+                              controller: passwordController,
+                              label: "Password",
+                              icon: Icons.lock_outline,
+                              isDark: isDark,
+                              obscure: obscurePassword,
+                              suffix: IconButton(
+                                icon: Icon(
+                                  obscurePassword
+                                      ? Icons.visibility_off
+                                      : Icons.visibility,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    obscurePassword = !obscurePassword;
+                                  });
+                                },
+                              ),
+                            ),
+
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const ForgotPasswordScreen(),
+                                    ),
+                                  );
+                                },
+                                child: const Text("Forgot password?"),
+                              ),
+                            ),
+
+                            const SizedBox(height: 10),
+
+                            SizedBox(
+                              width: double.infinity,
+                              height: 50,
+                              child: ElevatedButton(
+                                onPressed: isLoading ? null : loginWithEmail,
+                                child: isLoading
+                                    ? const CircularProgressIndicator(
+                                        color: Colors.white,
+                                      )
+                                    : const Text("Login"),
+                              ),
+                            ),
+
+                            const SizedBox(height: 20),
+                            const Text("OR"),
+                            const SizedBox(height: 20),
+
+                            SizedBox(
+                              width: double.infinity,
+                              height: 50,
+                              child: OutlinedButton.icon(
+                                icon: const Icon(Icons.login),
+                                label: const Text("Continue with Google"),
+                                onPressed: loginWithGoogle,
+                              ),
+                            ),
+
+                            const SizedBox(height: 20),
+
+                            TextButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const SignupScreen(),
+                                  ),
+                                );
+                              },
+                              child: const Text("Create new account"),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -324,6 +328,29 @@ class _LoginScreenState extends State<LoginScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _inputField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    required bool isDark,
+    bool obscure = false,
+    Widget? suffix,
+  }) {
+    return TextField(
+      controller: controller,
+      obscureText: obscure,
+      style: TextStyle(color: isDark ? Colors.white : Colors.black),
+      decoration: InputDecoration(
+        prefixIcon: Icon(icon),
+        suffixIcon: suffix,
+        labelText: label,
+        filled: true,
+        fillColor: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
       ),
     );
   }

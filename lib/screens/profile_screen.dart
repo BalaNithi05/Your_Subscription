@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -35,9 +36,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadProfile();
   }
 
-  // =========================
-  // LOAD PROFILE
-  // =========================
+  // ================= LOAD PROFILE =================
   Future<void> _loadProfile() async {
     final user = _client.auth.currentUser;
     if (user == null) return;
@@ -53,8 +52,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (!mounted) return;
 
     final themeString = data?['theme_mode'] ?? 'system';
-
-    // Apply theme globally
     themeNotifier.value = _mapToThemeMode(themeString);
 
     setState(() {
@@ -69,9 +66,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
-  // =========================
-  // UPDATE THEME
-  // =========================
+  // ================= UPDATE THEME =================
   Future<void> _updateTheme(String value) async {
     final user = _client.auth.currentUser;
     if (user == null) return;
@@ -105,259 +100,177 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return Scaffold(
       backgroundColor: isDark
-          ? const Color(0xFF121212)
-          : const Color(0xFFF5F7FA),
+          ? const Color(0xFF0B1220)
+          : const Color(0xFFF1F5F9),
       body: loading
           ? const Center(child: CircularProgressIndicator())
-          : CustomScrollView(
-              slivers: [
-                // ================= PREMIUM HEADER =================
-                SliverAppBar(
-                  expandedHeight: 280,
-                  pinned: true,
-                  backgroundColor: Colors.transparent,
-                  flexibleSpace: FlexibleSpaceBar(
-                    background: Container(
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Color(0xFF1F1C2C), Color(0xFF928DAB)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                      ),
+          : Stack(
+              children: [
+                // ===== BACKGROUND GRADIENT =====
+                Container(
+                  height: 320,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                ),
+
+                // ===== CONTENT =====
+                CustomScrollView(
+                  slivers: [
+                    SliverToBoxAdapter(
                       child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const SizedBox(height: 40),
+                          const SizedBox(height: 80),
 
-                          // AVATAR
-                          Stack(
-                            children: [
-                              CircleAvatar(
-                                radius: 55,
-                                backgroundColor: Colors.white,
-                                backgroundImage: avatarUrl != null
-                                    ? NetworkImage(avatarUrl!)
-                                    : null,
-                                child: avatarUrl == null
-                                    ? const Icon(
-                                        Icons.person,
-                                        size: 45,
-                                        color: Colors.black,
-                                      )
-                                    : null,
-                              ),
-                              Positioned(
-                                bottom: 0,
-                                right: 0,
-                                child: GestureDetector(
-                                  onTap: () async {
-                                    final updated = await Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            const EditProfileScreen(),
-                                      ),
-                                    );
-                                    if (updated == true) {
-                                      _loadProfile();
-                                    }
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: const BoxDecoration(
-                                      color: Colors.blue,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.edit,
-                                      size: 16,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                          // ===== GLASS PROFILE CARD =====
+                          _glassProfileCard(),
 
-                          const SizedBox(height: 12),
-
-                          // NAME
-                          Text(
-                            name,
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-
-                          // EMAIL
-                          Text(
-                            email,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 13,
-                            ),
-                          ),
-
-                          const SizedBox(height: 8),
-
-                          // PLAN BADGE
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: plan == 'pro'
-                                  ? Colors.green
-                                  : Colors.white,
-                              borderRadius: BorderRadius.circular(30),
-                            ),
-                            child: Text(
-                              plan.toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: plan == 'pro'
-                                    ? Colors.white
-                                    : Colors.black,
-                              ),
+                          const SizedBox(height: 30),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: Column(
+                              children: [
+                                _infoCard(),
+                                const SizedBox(height: 24),
+                                _themeCard(),
+                                const SizedBox(height: 24),
+                                _settingsCard(),
+                                const SizedBox(height: 30),
+                                _logoutButton(),
+                                const SizedBox(height: 40),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ),
-                ),
-
-                // ================= BODY =================
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      children: [
-                        _infoCard(),
-                        const SizedBox(height: 20),
-
-                        // ================= THEME MODE =================
-                        _settingsCard(
-                          DropdownButtonFormField<String>(
-                            value: _themeMode,
-                            items: const [
-                              DropdownMenuItem(
-                                value: 'light',
-                                child: Text('Light'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'dark',
-                                child: Text('Dark'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'system',
-                                child: Text('System'),
-                              ),
-                            ],
-                            onChanged: (value) async {
-                              if (value != null) {
-                                await _updateTheme(value);
-                              }
-                            },
-                            decoration: const InputDecoration(
-                              prefixIcon: Icon(Icons.color_lens_outlined),
-                              labelText: 'Theme Mode',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        // ================= SETTINGS =================
-                        _settingsCard(
-                          Column(
-                            children: [
-                              _tile(
-                                Icons.lock_outline,
-                                'Security & Privacy',
-                                () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          const SecurityPrivacyScreen(),
-                                    ),
-                                  );
-                                },
-                              ),
-                              const Divider(),
-                              _tile(
-                                Icons.notifications_none,
-                                'Notifications',
-                                () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          const NotificationSettingsScreen(),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 30),
-
-                        // ================= LOGOUT =================
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red,
-                            minimumSize: const Size(double.infinity, 50),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                          ),
-                          onPressed: () async {
-                            await _client.auth.signOut();
-                            if (!mounted) return;
-
-                            Navigator.pushAndRemoveUntil(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const LoginScreen(),
-                              ),
-                              (_) => false,
-                            );
-                          },
-                          child: const Text(
-                            'Logout',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  ],
                 ),
               ],
             ),
     );
   }
 
+  // ================= GLASS PROFILE CARD =================
+  Widget _glassProfileCard() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: Colors.white.withOpacity(0.15)),
+            ),
+            child: Column(
+              children: [
+                Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 55,
+                      backgroundColor: Colors.white,
+                      backgroundImage: avatarUrl != null
+                          ? NetworkImage(avatarUrl!)
+                          : null,
+                      child: avatarUrl == null
+                          ? const Icon(
+                              Icons.person,
+                              size: 50,
+                              color: Colors.black,
+                            )
+                          : null,
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: GestureDetector(
+                        onTap: () async {
+                          final updated = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const EditProfileScreen(),
+                            ),
+                          );
+                          if (updated == true) {
+                            _loadProfile();
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF3B82F6),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.edit,
+                            size: 16,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                Text(
+                  email,
+                  style: const TextStyle(fontSize: 14, color: Colors.white70),
+                ),
+                const SizedBox(height: 12),
+                _planBadge(),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _planBadge() {
+    final isPro = plan == 'pro';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      decoration: BoxDecoration(
+        gradient: isPro
+            ? const LinearGradient(
+                colors: [Color(0xFF16A34A), Color(0xFF22C55E)],
+              )
+            : null,
+        color: isPro ? null : Colors.white.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(30),
+      ),
+      child: Text(
+        plan.toUpperCase(),
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
+          color: isPro ? Colors.white : Colors.black,
+        ),
+      ),
+    );
+  }
+
   // ================= INFO CARD =================
   Widget _infoCard() {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(blurRadius: 10, color: Colors.black.withOpacity(0.05)),
-        ],
-      ),
-      child: Column(
+    return _cardContainer(
+      Column(
         children: [
           if (bio != null && bio!.isNotEmpty)
             _infoRow(Icons.info_outline, bio!),
@@ -373,14 +286,93 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _settingsCard(Widget child) {
+  Widget _themeCard() {
+    return _cardContainer(
+      DropdownButtonFormField<String>(
+        value: _themeMode,
+        borderRadius: BorderRadius.circular(16),
+        items: const [
+          DropdownMenuItem(value: 'light', child: Text('Light')),
+          DropdownMenuItem(value: 'dark', child: Text('Dark')),
+          DropdownMenuItem(value: 'system', child: Text('System')),
+        ],
+        onChanged: (value) async {
+          if (value != null) {
+            await _updateTheme(value);
+          }
+        },
+        decoration: const InputDecoration(
+          prefixIcon: Icon(Icons.color_lens_outlined),
+          labelText: 'Theme Mode',
+          border: OutlineInputBorder(),
+        ),
+      ),
+    );
+  }
+
+  Widget _settingsCard() {
+    return _cardContainer(
+      Column(
+        children: [
+          _tile(Icons.lock_outline, 'Security & Privacy', () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SecurityPrivacyScreen()),
+            );
+          }),
+          const Divider(),
+          _tile(Icons.notifications_none, 'Notifications', () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const NotificationSettingsScreen(),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _logoutButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 58,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFDC2626),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          elevation: 8,
+        ),
+        onPressed: () async {
+          await _client.auth.signOut();
+          if (!mounted) return;
+
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (_) => false,
+          );
+        },
+        child: const Text(
+          'Logout',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+      ),
+    );
+  }
+
+  // ================= HELPERS =================
+  Widget _cardContainer(Widget child) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(blurRadius: 10, color: Colors.black.withOpacity(0.05)),
+          BoxShadow(blurRadius: 20, color: Colors.black.withOpacity(0.05)),
         ],
       ),
       child: child,
@@ -389,8 +381,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _tile(IconData icon, String title, VoidCallback onTap) {
     return ListTile(
-      leading: Icon(icon, color: Colors.blue),
-      title: Text(title),
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon, color: const Color(0xFF3B82F6)),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
       trailing: const Icon(Icons.chevron_right),
       onTap: onTap,
     );
@@ -402,7 +395,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Row(
         children: [
           Icon(icon, size: 18, color: Colors.grey),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(text, style: const TextStyle(color: Colors.grey)),
           ),

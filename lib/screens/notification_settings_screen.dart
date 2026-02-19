@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/notification_service.dart';
@@ -36,9 +37,6 @@ class _NotificationSettingsScreenState
     _loadSettings();
   }
 
-  // =========================
-  // LOAD SETTINGS
-  // =========================
   Future<void> _loadSettings() async {
     final user = _client.auth.currentUser;
     if (user == null) return;
@@ -84,9 +82,6 @@ class _NotificationSettingsScreenState
     return '$hour:$minute:00';
   }
 
-  // =========================
-  // SAVE SETTINGS
-  // =========================
   Future<void> _saveSettings() async {
     final user = _client.auth.currentUser;
     if (user == null) return;
@@ -107,27 +102,16 @@ class _NotificationSettingsScreenState
 
     final subs = await _service.fetchSubscriptions();
 
-    // =============================
-    // MASTER SWITCH OFF
-    // =============================
     if (!_notificationsEnabled) {
       for (final sub in subs) {
         await NotificationService.cancel(sub.id.hashCode);
       }
-
       await NotificationService.cancel(999999);
       await NotificationService.cancel(888888);
-    }
-    // =============================
-    // MASTER SWITCH ON
-    // =============================
-    else {
+    } else {
       for (final sub in subs) {
         await _service.updateSubscription(sub);
       }
-
-      await NotificationService.cancel(999999);
-      await NotificationService.cancel(888888);
 
       final summaryTime = DateTime(
         DateTime.now().year,
@@ -165,9 +149,6 @@ class _NotificationSettingsScreenState
     );
   }
 
-  // =========================
-  // TEST NOTIFICATION
-  // =========================
   Future<void> _sendTestNotification() async {
     if (!_notificationsEnabled) return;
 
@@ -192,7 +173,6 @@ class _NotificationSettingsScreenState
     Function(TimeOfDay) onSelected,
   ) async {
     final picked = await showTimePicker(context: context, initialTime: initial);
-
     if (picked != null) {
       setState(() => onSelected(picked));
     }
@@ -205,97 +185,181 @@ class _NotificationSettingsScreenState
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Notification Settings')),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: ListView(
-          children: [
-            SwitchListTile(
-              title: const Text('Enable Notifications'),
-              subtitle: const Text('Turn off all reminders & summaries'),
-              value: _notificationsEnabled,
-              onChanged: (value) {
-                setState(() => _notificationsEnabled = value);
-              },
+      body: Stack(
+        children: [
+          // ===== NEW PREMIUM BACKGROUND =====
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Color(0xFF4C1D95), // Deep purple
+                  Color(0xFF1E1B4B), // Indigo
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
             ),
+          ),
 
-            const SizedBox(height: 20),
+          SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                const Text(
+                  "Notifications",
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 30),
 
-            if (_notificationsEnabled) ...[
-              _timeTile(
-                icon: Icons.access_time,
-                title: 'Reminder Time',
-                value: _reminderTime.format(context),
-                onTap: () =>
-                    _pickTime(_reminderTime, (val) => _reminderTime = val),
-              ),
-              const SizedBox(height: 16),
-              _timeTile(
-                icon: Icons.nightlight_round,
-                title: 'Quiet Start Time',
-                value: _quietStart.format(context),
-                onTap: () => _pickTime(_quietStart, (val) => _quietStart = val),
-              ),
-              const SizedBox(height: 16),
-              _timeTile(
-                icon: Icons.wb_sunny_outlined,
-                title: 'Quiet End Time',
-                value: _quietEnd.format(context),
-                onTap: () => _pickTime(_quietEnd, (val) => _quietEnd = val),
-              ),
-              const SizedBox(height: 20),
+                _glassCard(
+                  child: SwitchListTile(
+                    value: _notificationsEnabled,
+                    activeColor: Colors.cyanAccent,
+                    title: const Text(
+                      "Enable Notifications",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    subtitle: const Text(
+                      "Turn off all reminders & summaries",
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                    onChanged: (v) => setState(() => _notificationsEnabled = v),
+                  ),
+                ),
 
-              SwitchListTile(
-                title: const Text('Daily Summary'),
-                value: _dailySummaryEnabled,
-                onChanged: (v) => setState(() => _dailySummaryEnabled = v),
-              ),
+                const SizedBox(height: 20),
 
-              SwitchListTile(
-                title: const Text('Weekly Summary'),
-                value: _weeklySummaryEnabled,
-                onChanged: (v) => setState(() => _weeklySummaryEnabled = v),
-              ),
+                if (_notificationsEnabled) ...[
+                  _glassCard(
+                    child: Column(
+                      children: [
+                        _timeTile(
+                          "Reminder Time",
+                          _reminderTime.format(context),
+                          () {
+                            _pickTime(
+                              _reminderTime,
+                              (val) => _reminderTime = val,
+                            );
+                          },
+                        ),
+                        const Divider(color: Colors.white24),
+                        _timeTile(
+                          "Quiet Start",
+                          _quietStart.format(context),
+                          () {
+                            _pickTime(_quietStart, (val) => _quietStart = val);
+                          },
+                        ),
+                        const Divider(color: Colors.white24),
+                        _timeTile("Quiet End", _quietEnd.format(context), () {
+                          _pickTime(_quietEnd, (val) => _quietEnd = val);
+                        }),
+                      ],
+                    ),
+                  ),
 
-              const SizedBox(height: 30),
+                  const SizedBox(height: 20),
 
-              ElevatedButton(
-                onPressed: _saving ? null : _saveSettings,
-                child: _saving
-                    ? const SizedBox(
-                        height: 18,
-                        width: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Save Settings'),
-              ),
+                  _glassCard(
+                    child: Column(
+                      children: [
+                        SwitchListTile(
+                          value: _dailySummaryEnabled,
+                          activeColor: Colors.cyanAccent,
+                          title: const Text(
+                            "Daily Summary",
+                            style: TextStyle(color: Colors.white),
+                          ),
+                          onChanged: (v) =>
+                              setState(() => _dailySummaryEnabled = v),
+                        ),
+                        SwitchListTile(
+                          value: _weeklySummaryEnabled,
+                          activeColor: Colors.cyanAccent,
+                          title: const Text(
+                            "Weekly Summary",
+                            style: TextStyle(color: Colors.white),
+                          ),
+                          onChanged: (v) =>
+                              setState(() => _weeklySummaryEnabled = v),
+                        ),
+                      ],
+                    ),
+                  ),
 
-              const SizedBox(height: 12),
+                  const SizedBox(height: 30),
 
-              OutlinedButton(
-                onPressed: _sendTestNotification,
-                child: const Text('Send Test Notification'),
-              ),
-            ],
-          ],
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF7C3AED),
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
+                    onPressed: _saving ? null : _saveSettings,
+                    child: _saving
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text("Save Settings"),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: Colors.white38),
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
+                    onPressed: _sendTestNotification,
+                    child: const Text("Send Test Notification"),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _glassCard({required Widget child}) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white24),
+          ),
+          child: child,
         ),
       ),
     );
   }
 
-  Widget _timeTile({
-    required IconData icon,
-    required String title,
-    required String value,
-    required VoidCallback onTap,
-  }) {
+  Widget _timeTile(String title, String value, VoidCallback onTap) {
     return ListTile(
-      leading: Icon(icon, color: Colors.blue),
-      title: Text(title),
-      trailing: Text(value),
+      title: Text(title, style: const TextStyle(color: Colors.white)),
+      trailing: Text(
+        value,
+        style: const TextStyle(
+          color: Colors.cyanAccent,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
       onTap: onTap,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      tileColor: Theme.of(context).cardColor,
     );
   }
 }

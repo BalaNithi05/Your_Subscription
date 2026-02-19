@@ -44,17 +44,11 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadSubscriptions();
   }
 
-  // =========================
-  // LOAD USER CURRENCY
-  // =========================
   Future<void> _initializeCurrency() async {
     await CurrencyService.loadUserCurrency();
     if (mounted) setState(() {});
   }
 
-  // =========================
-  // LOAD SUBSCRIPTIONS
-  // =========================
   Future<void> _loadSubscriptions() async {
     try {
       setState(() => _loading = true);
@@ -87,9 +81,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return null;
   }
 
-  // =========================
-  // TOTAL SPEND (IN INR ONLY)
-  // =========================
   double get totalSpend {
     double total = 0;
 
@@ -104,7 +95,6 @@ class _HomeScreenState extends State<HomeScreen> {
         amount = sub.billingCycle == 'yearly' ? amount : amount * 12;
       }
 
-      // ✅ DO NOT CONVERT HERE
       total += amount;
     }
 
@@ -134,151 +124,210 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _dashboardTab() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final bgColor = isDark ? const Color(0xFF0F172A) : const Color(0xFFF4F6FA);
+    final cardColor = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final accent = Theme.of(context).colorScheme.primary;
+    final textColor = isDark ? Colors.white : Colors.black87;
+
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(child: CircularProgressIndicator(color: accent));
     }
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // ================= TOTAL CARD =================
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.blue,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _showMonthly ? 'Total Monthly Spend' : 'Total Yearly Spend',
-                style: const TextStyle(color: Colors.white70),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                CurrencyService.format(totalSpend),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
+    return Container(
+      color: bgColor,
+      child: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          // ================= SEARCH =================
+          Container(
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: TextField(
+              style: TextStyle(color: textColor),
+              onChanged: (val) => setState(() => _searchQuery = val),
+              decoration: InputDecoration(
+                hintText: "Search subscriptions...",
+                hintStyle: TextStyle(color: textColor.withOpacity(0.5)),
+                prefixIcon: Icon(
+                  Icons.search,
+                  color: textColor.withOpacity(0.5),
                 ),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 16),
               ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _cycleButton('Monthly', _showMonthly),
-                  const SizedBox(width: 8),
-                  _cycleButton('Yearly', !_showMonthly),
-                ],
-              ),
-            ],
+            ),
           ),
-        ),
 
-        const SizedBox(height: 16),
+          const SizedBox(height: 28),
 
-        // ================= CATEGORY FILTER =================
-        SizedBox(
-          height: 40,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: categories.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 8),
-            itemBuilder: (_, i) {
-              final cat = categories[i];
-              return ChoiceChip(
-                label: Text(cat),
-                selected: _selectedCategory == cat,
-                onSelected: (_) => setState(() => _selectedCategory = cat),
-              );
-            },
-          ),
-        ),
-
-        const SizedBox(height: 16),
-
-        // ================= SUBSCRIPTION LIST =================
-        if (filteredSubscriptions.isEmpty)
-          const Padding(
-            padding: EdgeInsets.only(top: 40),
-            child: Center(child: Text('No subscriptions found')),
-          )
-        else
-          ...filteredSubscriptions.map((sub) {
-            final brandImage = _getBrandImage(sub.name);
-
-            return Card(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: Colors.grey.shade200,
-                  backgroundImage: sub.imageUrl != null
-                      ? NetworkImage(sub.imageUrl!)
-                      : brandImage,
-                  child: sub.imageUrl == null && brandImage == null
-                      ? Text(
-                          sub.name.isNotEmpty ? sub.name[0].toUpperCase() : '?',
-                        )
-                      : null,
+          // ================= TOTAL CARD =================
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(color: accent.withOpacity(0.15), blurRadius: 30),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _showMonthly ? 'Total Monthly Spend' : 'Total Yearly Spend',
+                  style: TextStyle(color: textColor.withOpacity(0.6)),
                 ),
-                title: Text(sub.name),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(sub.category),
-                    if (sub.isPaused)
-                      const Text(
-                        'Paused',
-                        style: TextStyle(
-                          color: Colors.orange,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                  ],
-                ),
-                trailing: Text(
-                  CurrencyService.format(sub.amount),
+                const SizedBox(height: 8),
+                Text(
+                  CurrencyService.format(totalSpend),
                   style: TextStyle(
+                    color: textColor,
+                    fontSize: 32,
                     fontWeight: FontWeight.bold,
-                    color: sub.isPaused ? Colors.grey : Colors.black,
                   ),
                 ),
-                onTap: () async {
-                  final updated = await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          SubscriptionDetailsScreen(subscription: sub),
-                    ),
-                  );
-                  if (updated == true) _loadSubscriptions();
-                },
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    _cycleButton('Monthly', _showMonthly, accent),
+                    const SizedBox(width: 12),
+                    _cycleButton('Yearly', !_showMonthly, accent),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 28),
+
+          // ================= CATEGORY =================
+          SizedBox(
+            height: 40,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: categories.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (_, i) {
+                final cat = categories[i];
+                final selected = _selectedCategory == cat;
+
+                return ChoiceChip(
+                  label: Text(cat),
+                  selected: selected,
+                  selectedColor: accent,
+                  backgroundColor: cardColor,
+                  labelStyle: TextStyle(
+                    color: selected ? Colors.white : textColor.withOpacity(0.7),
+                  ),
+                  onSelected: (_) => setState(() => _selectedCategory = cat),
+                );
+              },
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // ================= SUBS =================
+          if (filteredSubscriptions.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 60),
+              child: Center(
+                child: Text(
+                  'No subscriptions found',
+                  style: TextStyle(color: textColor.withOpacity(0.5)),
+                ),
               ),
-            );
-          }),
-      ],
+            )
+          else
+            ...filteredSubscriptions.map((sub) {
+              final brandImage = _getBrandImage(sub.name);
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 12,
+                    ),
+                  ],
+                ),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.all(16),
+                  leading: CircleAvatar(
+                    backgroundColor: isDark
+                        ? Colors.grey.shade800
+                        : Colors.grey.shade200,
+                    backgroundImage: sub.imageUrl != null
+                        ? NetworkImage(sub.imageUrl!)
+                        : brandImage,
+                    child: sub.imageUrl == null && brandImage == null
+                        ? Text(
+                            sub.name.isNotEmpty
+                                ? sub.name[0].toUpperCase()
+                                : '?',
+                            style: TextStyle(color: textColor),
+                          )
+                        : null,
+                  ),
+                  title: Text(
+                    sub.name,
+                    style: TextStyle(
+                      color: textColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  subtitle: Text(
+                    sub.category,
+                    style: TextStyle(color: textColor.withOpacity(0.5)),
+                  ),
+                  trailing: Text(
+                    CurrencyService.format(sub.amount),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: sub.isPaused ? Colors.grey : accent,
+                    ),
+                  ),
+                  onTap: () async {
+                    final updated = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            SubscriptionDetailsScreen(subscription: sub),
+                      ),
+                    );
+                    if (updated == true) _loadSubscriptions();
+                  },
+                ),
+              );
+            }),
+        ],
+      ),
     );
   }
 
-  Widget _cycleButton(String label, bool selected) {
+  Widget _cycleButton(String label, bool selected, Color accent) {
     return Expanded(
       child: GestureDetector(
         onTap: () => setState(() => _showMonthly = label == 'Monthly'),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
+          padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: selected ? Colors.white : Colors.white24,
-            borderRadius: BorderRadius.circular(12),
+            color: selected ? accent : Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: accent),
           ),
           child: Center(
             child: Text(
               label,
               style: TextStyle(
-                color: selected ? Colors.blue : Colors.white,
+                color: selected ? Colors.white : accent,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -296,8 +345,13 @@ class _HomeScreenState extends State<HomeScreen> {
       const ProfileScreen(),
     ];
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final navColor = isDark ? const Color(0xFF1E293B) : Colors.white;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('My Subscriptions')),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(elevation: 0, title: const Text('My Subscriptions')),
       body: pages[_currentIndex],
       floatingActionButton: _currentIndex == 0
           ? FloatingActionButton(
@@ -313,20 +367,29 @@ class _HomeScreenState extends State<HomeScreen> {
               child: const Icon(Icons.add),
             )
           : null,
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (i) => setState(() => _currentIndex = i),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
-            label: 'Dashboard',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.analytics),
-            label: 'Analytics',
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-        ],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: navColor,
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 15),
+          ],
+        ),
+        child: BottomNavigationBar(
+          backgroundColor: navColor,
+          currentIndex: _currentIndex,
+          onTap: (i) => setState(() => _currentIndex = i),
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.dashboard),
+              label: 'Dashboard',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.analytics),
+              label: 'Analytics',
+            ),
+            BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          ],
+        ),
       ),
     );
   }

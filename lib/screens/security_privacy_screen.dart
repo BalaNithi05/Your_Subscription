@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -58,7 +59,6 @@ class _SecurityPrivacyScreenState extends State<SecurityPrivacyScreen> {
   // ================= TOGGLE APP LOCK =================
   Future<void> _toggleAppLock(bool value) async {
     if (value) {
-      // 🔐 ENABLE → biometric required
       final success = await AppLockService.authenticate();
       if (!success) {
         if (!mounted) return;
@@ -88,79 +88,139 @@ class _SecurityPrivacyScreenState extends State<SecurityPrivacyScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Security & Privacy'),
-        centerTitle: true,
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+      body: Stack(
         children: [
-          _sectionTitle('Account Security'),
-
-          // 🔐 APP LOCK SWITCH
+          // ===== PREMIUM GRADIENT BACKGROUND =====
           Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6),
-              ],
-            ),
-            child: SwitchListTile(
-              secondary: const Icon(Icons.fingerprint, color: Colors.blue),
-              title: const Text('App Lock'),
-              subtitle: const Text('Use fingerprint or face lock'),
-              value: _appLockEnabled,
-              onChanged: _toggleAppLock,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF4C1D95), Color(0xFF1E1B4B)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
             ),
           ),
 
-          const SizedBox(height: 24),
-          _sectionTitle('Danger Zone'),
+          SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                const Text(
+                  "Security & Privacy",
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
 
-          _dangerTile(
-            context,
-            icon: Icons.delete_forever,
-            title: 'Delete Account',
-            subtitle: 'Permanently delete your account',
-            onTap: () => _confirmDelete(context),
+                const SizedBox(height: 30),
+
+                // ================= ACCOUNT SECURITY =================
+                const Text(
+                  "Account Security",
+                  style: TextStyle(fontSize: 14, color: Colors.white70),
+                ),
+
+                const SizedBox(height: 12),
+
+                _glassCard(
+                  child: SwitchListTile(
+                    secondary: const Icon(
+                      Icons.fingerprint,
+                      color: Colors.cyanAccent,
+                    ),
+                    title: const Text(
+                      'App Lock',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    subtitle: const Text(
+                      'Use fingerprint or face lock',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                    activeColor: Colors.cyanAccent,
+                    value: _appLockEnabled,
+                    onChanged: _toggleAppLock,
+                  ),
+                ),
+
+                const SizedBox(height: 40),
+
+                // ================= DANGER ZONE =================
+                const Text(
+                  "Danger Zone",
+                  style: TextStyle(fontSize: 14, color: Colors.redAccent),
+                ),
+
+                const SizedBox(height: 12),
+
+                _dangerGlassCard(
+                  icon: Icons.delete_forever,
+                  title: 'Delete Account',
+                  subtitle: 'Permanently delete your account',
+                  onTap: () => _confirmDelete(context),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  // ================= UI HELPERS =================
-
-  Widget _sectionTitle(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Text(
-        text,
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+  // ================= GLASS CARD =================
+  Widget _glassCard({required Widget child}) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white24),
+          ),
+          child: child,
+        ),
       ),
     );
   }
 
-  Widget _dangerTile(
-    BuildContext context, {
+  // ================= DANGER GLASS CARD =================
+  Widget _dangerGlassCard({
     required IconData icon,
     required String title,
     required String subtitle,
     required VoidCallback onTap,
   }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.red.shade50,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: ListTile(
-        leading: Icon(icon, color: Colors.red),
-        title: Text(title, style: const TextStyle(color: Colors.red)),
-        subtitle: Text(subtitle),
-        onTap: onTap,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: Colors.red.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.redAccent.withOpacity(0.4)),
+          ),
+          child: ListTile(
+            leading: Icon(icon, color: Colors.redAccent),
+            title: Text(
+              title,
+              style: const TextStyle(
+                color: Colors.redAccent,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            subtitle: Text(
+              subtitle,
+              style: const TextStyle(color: Colors.white70),
+            ),
+            onTap: onTap,
+          ),
+        ),
       ),
     );
   }
@@ -169,21 +229,32 @@ class _SecurityPrivacyScreenState extends State<SecurityPrivacyScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Delete Account'),
+        backgroundColor: const Color(0xFF1E1B4B),
+        title: const Text(
+          'Delete Account',
+          style: TextStyle(color: Colors.white),
+        ),
         content: const Text(
           'This action is permanent. All your subscriptions and data will be removed.',
+          style: TextStyle(color: Colors.white70),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.white70),
+            ),
           ),
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
               await _deleteAccount(context);
             },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: Colors.redAccent),
+            ),
           ),
         ],
       ),
